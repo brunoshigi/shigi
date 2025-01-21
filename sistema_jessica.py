@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 
 # Configurações básicas de fonte
-FONT_TITLE = ("Arial", 20, "bold")
+FONT_TITLE = ("Arial", 19, "bold")
 FONT_LABEL = ("Arial", 12)
 FONT_ENTRY = ("Arial", 12)
 
