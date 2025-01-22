@@ -12,6 +12,7 @@ from typing import List, Dict, Optional
 FONT_TITLE = ("Arial", 19, "bold")
 FONT_LABEL = ("Arial", 12)
 FONT_ENTRY = ("Arial", 12)
+FONT_SECTION = ("Arial", 14, "bold")
 
 class ConfigManager:
     def __init__(self):
@@ -80,139 +81,186 @@ class SistemaCaixa:
 
     def __init__(self, master: tk.Tk):
         self.master = master
-        self.master.title("Sistema de Caixa")
-        self.master.geometry("900x600")
+        self.master.title("Sistema de Caixa - Austral")
+        self.master.geometry("1200x800")  # Aumentado para melhor visualização
         self.config = ConfigManager()
-        # Define arquivo de backup com base na data atual
         self.ARQUIVO_BACKUP = f"vendas_{datetime.now().strftime('%Y%m%d')}.json"
         self.vendas: List[Venda] = []
-
         self.selected_item = None
         self.selected_id = None
 
         self._criar_interface()
         self._configurar_atalhos()
-
-        # Carregar vendas após a criação completa da interface
         self.carregar_vendas()
-        # Atualizar resumo após carregar as vendas
         self.atualizar_resumo()
 
     def _criar_interface(self):
-        self._criar_frame_principal()
+        # Criar o frame principal com uma cor de fundo
+        self.main_frame = ctk.CTkFrame(self.master)
+        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        # Adicionar título principal
+        titulo = ctk.CTkLabel(self.main_frame, text="Sistema de Vendas", font=FONT_TITLE)
+        titulo.pack(pady=(0, 20))
+
+        # Criar os componentes da interface
         self._criar_campos_entrada()
         self._criar_botoes()
-        self._criar_treeview()
-        self._criar_resumo()
-        self.vendedor_cb.focus_set()
-
-    def _criar_frame_principal(self):
-        self.main_frame = ctk.CTkFrame(self.master)
-        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self._criar_area_principal()
 
     def _criar_campos_entrada(self):
+        # Frame principal para os campos de entrada
         frame_campos = ctk.CTkFrame(self.main_frame)
-        frame_campos.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
+        frame_campos.pack(fill=tk.X, padx=10, pady=10)
 
-        campos = [
+        # Frame esquerdo para dados da venda
+        frame_esquerdo = ctk.CTkFrame(frame_campos)
+        frame_esquerdo.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Frame direito para dados do pagamento
+        frame_direito = ctk.CTkFrame(frame_campos)
+        frame_direito.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Título para dados da venda
+        ctk.CTkLabel(frame_esquerdo, text="Dados da Venda", font=FONT_SECTION).pack(pady=5)
+        
+        # Campos do lado esquerdo (dados da venda)
+        campos_esquerda = [
             ("Vendedor:", "vendedor_cb", self.VENDEDORES, False),
-            ("Pagamento:", "pagamento_cb", self.PAGAMENTOS_COMPLETOS, False),
+            ("Nº Boleta/Recibo:", "boleta_entry", None, False),
+            ("Valor (R$):", "valor_entry", None, False),
+        ]
+        
+        # Título para dados do pagamento
+        ctk.CTkLabel(frame_direito, text="Dados do Pagamento", font=FONT_SECTION).pack(pady=5)
+        
+        # Campos do lado direito (dados do pagamento)
+        campos_direita = [
+            ("Forma de Pagamento:", "pagamento_cb", self.PAGAMENTOS_COMPLETOS, False),
             ("Observações:", "observacoes_cb", self.OBSERVACOES_OPCOES, True),
-            ("Valor:", "valor_entry", None, False),
-            ("Nº Boleta/Recibo:", "boleta_entry", None, False)
         ]
 
         self.widgets_entrada = []
 
-        for i, (label, var_name, values, editable) in enumerate(campos):
+        # Criar campos do lado esquerdo
+        for i, (label, var_name, values, editable) in enumerate(campos_esquerda):
+            frame_campo = ctk.CTkFrame(frame_esquerdo)
+            frame_campo.pack(fill=tk.X, padx=10, pady=8)
+            
+            ctk.CTkLabel(frame_campo, text=label, anchor="w", width=120).pack(side=tk.LEFT, padx=5)
+            
             if values is not None:
-                widget = self._criar_combobox(frame_campos, label, var_name, values, i, editable)
+                widget = ctk.CTkOptionMenu(frame_campo, values=values, width=250)
+                widget.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+                if values:
+                    widget.set(values[0])
             else:
-                widget = self._criar_entry(frame_campos, label, var_name, i)
+                widget = ctk.CTkEntry(frame_campo, width=250)
+                widget.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+            
+            setattr(self, var_name, widget)
             self.widgets_entrada.append(widget)
 
+        # Criar campos do lado direito
+        for i, (label, var_name, values, editable) in enumerate(campos_direita):
+            frame_campo = ctk.CTkFrame(frame_direito)
+            frame_campo.pack(fill=tk.X, padx=10, pady=8)
+            
+            ctk.CTkLabel(frame_campo, text=label, anchor="w", width=120).pack(side=tk.LEFT, padx=5)
+            
+            if values is not None:
+                widget = ctk.CTkOptionMenu(frame_campo, values=values, width=250)
+                widget.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+                if values:
+                    widget.set(values[0])
+            else:
+                widget = ctk.CTkEntry(frame_campo, width=250)
+                widget.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+            
+            setattr(self, var_name, widget)
+            self.widgets_entrada.append(widget)
+
+        # Configurar navegação por Tab e Enter
         for idx, widget in enumerate(self.widgets_entrada[:-1]):
             widget.bind("<Return>", lambda e, nxt=self.widgets_entrada[idx+1]: nxt.focus_set())
+            widget.bind("<Tab>", lambda e, nxt=self.widgets_entrada[idx+1]: nxt.focus_set())
         self.widgets_entrada[-1].bind("<Return>", lambda e: self.adicionar_venda())
-
-        frame_campos.columnconfigure(1, weight=1)
-
-    def _criar_combobox(self, parent, label: str, var_name: str, values: list, row: int, editable: bool):
-        ctk.CTkLabel(parent, text=label).grid(row=row, column=0, sticky=tk.W, padx=5, pady=2)
-        cb = ctk.CTkOptionMenu(parent, values=values, state="normal")
-        cb.grid(row=row, column=1, sticky=tk.EW, padx=5, pady=2)
-        if values:
-            cb.set(values[0])
-        setattr(self, var_name, cb)
-        return cb
-
-    def _criar_entry(self, parent, label: str, var_name: str, row: int):
-        ctk.CTkLabel(parent, text=label).grid(row=row, column=0, sticky=tk.W, padx=5, pady=2)
-        entry = ctk.CTkEntry(parent)
-        entry.grid(row=row, column=1, sticky=tk.EW, padx=5, pady=2)
-        setattr(self, var_name, entry)
-        return entry
 
     def _criar_botoes(self):
         frame_botoes = ctk.CTkFrame(self.main_frame)
-        frame_botoes.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+        frame_botoes.pack(fill=tk.X, padx=10, pady=10)
 
-        botoes = [
-            ("Adicionar Venda (Alt+A)", self.adicionar_venda),
-            ("Excluir Venda (Alt+E)", self.excluir_venda),
-            ("Gerar Relatório (Alt+R)", self.gerar_relatorio)
+        # Lista de botões com seus textos, comandos e atalhos
+        botoes_info = [
+            ("Adicionar Venda (Alt+A)", self.adicionar_venda, "<Alt-a>"),
+            ("Excluir Venda (Alt+E)", self.excluir_venda, "<Alt-e>"),
+            ("Gerar Relatório (Alt+R)", self.gerar_relatorio, "<Alt-r>"),
+            ("Limpar Campos (Alt+L)", self.limpar_campos, "<Alt-l>")
         ]
 
-        for texto, comando in botoes:
-            btn = ctk.CTkButton(frame_botoes, text=texto, command=comando)
-            btn.pack(side=tk.LEFT, padx=5)
+        # Criar os botões com espaçamento uniforme
+        for texto, comando, atalho in botoes_info:
+            btn = ctk.CTkButton(
+                frame_botoes,
+                text=texto,
+                command=comando,
+                width=200,
+                height=35
+            )
+            btn.pack(side=tk.LEFT, padx=10, pady=5)
+            self.master.bind(atalho, lambda e, cmd=comando: cmd())
 
-    def _criar_treeview(self):
-        frame_inferior = ttk.Frame(self.main_frame)
-        frame_inferior.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=5)
+    def _criar_area_principal(self):
+        # Frame para conter a tabela e o resumo
+        frame_principal = ctk.CTkFrame(self.main_frame)
+        frame_principal.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        frame_vendas = ttk.Frame(frame_inferior)
-        frame_vendas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Frame para a tabela (lado esquerdo)
+        frame_tabela = ttk.Frame(frame_principal)
+        frame_tabela.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
 
+        # Criar Treeview com colunas
         colunas = [
-            ("Vendedor", 100), ("Tipo", 100), ("Detalhes", 150),
-            ("Bandeira", 100), ("Valor", 100), ("Boleta", 100),
-            ("Troca", 60), ("Data", 150)
+            ("Vendedor", 100),
+            ("Tipo", 100),
+            ("Detalhes", 150),
+            ("Bandeira", 100),
+            ("Valor", 100),
+            ("Boleta", 100),
+            ("Troca", 60),
+            ("Data", 150)
         ]
 
-        self.tree = ttk.Treeview(frame_vendas, columns=[col[0] for col in colunas], show='headings')
-
+        self.tree = ttk.Treeview(frame_tabela, columns=[col[0] for col in colunas], show='headings')
+        
+        # Configurar colunas
         for col, width in colunas:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=width, anchor='center')
 
-        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        scrollbar = ttk.Scrollbar(frame_vendas, orient=tk.VERTICAL, command=self.tree.yview)
+        # Adicionar scrollbar
+        scrollbar = ttk.Scrollbar(frame_tabela, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscroll=scrollbar.set)
+        
+        # Posicionar elementos
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
+        # Criar frame de resumo (lado direito)
+        frame_resumo = ctk.CTkFrame(frame_principal)
+        frame_resumo.pack(side=tk.RIGHT, fill=tk.BOTH, padx=(10, 0))
+
+        # Título do resumo
+        ctk.CTkLabel(frame_resumo, text="Resumo de Vendas", font=FONT_SECTION).pack(pady=10)
+
+        # Área de texto do resumo
+        self.resumo_text = ctk.CTkTextbox(frame_resumo, width=300, height=400)
+        self.resumo_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Configurar eventos da tabela
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
         self.tree.bind('<Double-1>', self.on_double_click)
         self.tree.bind('<Delete>', lambda e: self.excluir_venda())
-
-    def _criar_resumo(self):
-        frame_resumo = ctk.CTkFrame(self.main_frame)
-        frame_resumo.pack(side=tk.RIGHT, fill=tk.BOTH, expand=False, padx=10, pady=5)
-
-        ctk.CTkLabel(frame_resumo, text="Resumo Geral:").pack(anchor=tk.NW)
-
-        self.resumo_text = ctk.CTkTextbox(frame_resumo, width=300)
-        self.resumo_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-    def _configurar_atalhos(self):
-        atalhos = {
-            '<Alt-a>': self.adicionar_venda,
-            '<Alt-e>': self.excluir_venda,
-            '<Alt-r>': self.gerar_relatorio
-        }
-        for atalho, comando in atalhos.items():
-            self.master.bind_all(atalho, lambda e, cmd=comando: cmd())
 
     def adicionar_venda(self):
         try:
@@ -241,7 +289,6 @@ class SistemaCaixa:
 
         try:
             valor = Decimal(self.valor_entry.get().replace(',', '.'))
-            # Permitir valor zero para "Troca"
             if pagamento_escolhido != "Troca" and valor <= 0:
                 raise ValueError
         except:
@@ -267,7 +314,7 @@ class SistemaCaixa:
             'numero_boleta': numero_boleta,
             'troca': troca
         }
-
+    
     def _processar_pagamento(self, pagamento_escolhido: str) -> tuple:
         if pagamento_escolhido == "Dinheiro":
             return "Dinheiro", "", "", False
@@ -300,12 +347,13 @@ class SistemaCaixa:
             messagebox.showerror("Erro", "Nenhuma venda selecionada para excluir.")
             return
 
-        if messagebox.askyesno("Confirmação", "Deseja excluir a venda selecionada?"):
+        if messagebox.askyesno("Confirmação", "Tem certeza que deseja excluir a venda selecionada?"):
             index = self.tree.index(selected_item)
             self.tree.delete(selected_item)
             del self.vendas[index]
             self.atualizar_resumo()
             self.salvar_vendas()
+            messagebox.showinfo("Sucesso", "Venda excluída com sucesso!")
 
     def limpar_campos(self):
         self.vendedor_cb.set(self.VENDEDORES[0])
@@ -321,18 +369,22 @@ class SistemaCaixa:
             return
 
         relatorio_window = ctk.CTkToplevel(self.master)
-        relatorio_window.title("Relatório Detalhado")
+        relatorio_window.title("Relatório Detalhado de Vendas")
         relatorio_window.geometry("800x600")
 
+        # Criar área de texto com scroll
         text_area = ctk.CTkTextbox(relatorio_window, wrap="word", font=FONT_ENTRY)
         text_area.pack(expand=True, fill='both', padx=10, pady=10)
 
+        # Gerar conteúdo do relatório
         vendas_por_vendedor = self._agrupar_vendas_por_vendedor()
         self._gerar_conteudo_relatorio(text_area, vendas_por_vendedor)
 
+        # Frame para botões
         frame_botoes = ttk.Frame(relatorio_window)
         frame_botoes.pack(pady=5)
 
+        # Botões do relatório
         ttk.Button(
             frame_botoes,
             text="Salvar Relatório",
@@ -348,27 +400,40 @@ class SistemaCaixa:
     def _agrupar_vendas_por_vendedor(self) -> Dict[str, List[Venda]]:
         vendas_por_vendedor = {}
         for venda in self.vendas:
-            vendas_por_vendedor.setdefault(venda.vendedor, []).append(venda)
-        return vendas_por_vendedor
+            if venda.vendedor not in vendas_por_vendedor:
+                vendas_por_vendedor[venda.vendedor] = []
+            vendas_por_vendedor[venda.vendedor].append(venda)
+        return dict(sorted(vendas_por_vendedor.items()))
 
     def _gerar_conteudo_relatorio(self, text_area: ctk.CTkTextbox, vendas_por_vendedor: Dict[str, List[Venda]]):
+        data_atual = datetime.now().strftime("%d/%m/%Y")
+        text_area.insert(tk.END, f"RELATÓRIO DE VENDAS - {data_atual}\n")
+        text_area.insert(tk.END, "="*50 + "\n\n")
+
+        total_geral = Decimal('0.00')
+
         for vendedor, lista_vendas in vendas_por_vendedor.items():
             text_area.insert(tk.END, f"\nVendedor: {vendedor}\n")
-            text_area.insert(tk.END, "="*50 + "\n\n")
+            text_area.insert(tk.END, "-"*50 + "\n\n")
 
-            total_vendas = Decimal('0.00')
+            total_vendedor = Decimal('0.00')
             resumo_pagamentos = {}
             resumo_bandeiras = {}
             trocas = []
 
+            # Detalhamento das vendas
             text_area.insert(tk.END, "DETALHAMENTO DAS VENDAS:\n\n")
             for venda in lista_vendas:
-                total_vendas += venda.valor
+                total_vendedor += venda.valor
                 self._atualizar_resumos(venda, resumo_pagamentos, resumo_bandeiras, trocas)
                 self._inserir_detalhes_venda(text_area, venda)
 
-            self._inserir_resumos(text_area, total_vendas, resumo_pagamentos, resumo_bandeiras, trocas)
+            total_geral += total_vendedor
+            self._inserir_resumos(text_area, total_vendedor, resumo_pagamentos, resumo_bandeiras, trocas)
             text_area.insert(tk.END, "\n" + "-"*50 + "\n")
+
+        # Resumo geral
+        text_area.insert(tk.END, f"\nTOTAL GERAL DE VENDAS: R$ {total_geral:.2f}\n")
 
     def _atualizar_resumos(self, venda: Venda, resumo_pagamentos: dict, resumo_bandeiras: dict, trocas: list):
         key_pagamento = venda.tipo_pagamento
@@ -427,6 +492,7 @@ class SistemaCaixa:
             messagebox.showerror("Erro", f"Erro ao salvar relatório: {str(e)}")
 
     def atualizar_resumo(self):
+        """Atualiza o resumo de vendas na interface"""
         self.resumo_text.configure(state='normal')
         self.resumo_text.delete("1.0", tk.END)
 
@@ -465,7 +531,7 @@ class SistemaCaixa:
             self.resumo_text.insert(tk.END, f"\nTotal de Trocas: R$ {total_trocas:.2f}\n")
 
     def carregar_vendas(self):
-        """Carrega vendas salvas do arquivo de backup do dia atual, se existir"""
+        """Carrega vendas salvas do arquivo de backup do dia atual"""
         try:
             if os.path.exists(self.ARQUIVO_BACKUP):
                 with open(self.ARQUIVO_BACKUP, 'r', encoding='utf-8') as file:
@@ -490,6 +556,13 @@ class SistemaCaixa:
 
     def on_double_click(self, event):
         pass
+
+    def _configurar_atalhos(self):
+        """Configura os atalhos de teclado do sistema"""
+        self.master.bind('<Alt-a>', lambda e: self.adicionar_venda())
+        self.master.bind('<Alt-e>', lambda e: self.excluir_venda())
+        self.master.bind('<Alt-r>', lambda e: self.gerar_relatorio())
+        self.master.bind('<Alt-l>', lambda e: self.limpar_campos())
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("System")
