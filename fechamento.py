@@ -2,432 +2,172 @@ import customtkinter as ctk
 from tkinter import messagebox
 from datetime import datetime
 
-# Configurações da aplicação
-APPEARANCE_MODE = "Dark"
-COLOR_THEME = "blue"
-WINDOW_WIDTH = 600
-WINDOW_HEIGHT = 700
+# Configurações iniciais
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("blue")
 
-# Lista de lojas físicas
-LOJAS = {
-    "AUSTRAL MORUMBI": {
-        "endereco": "Shopping Morumbi, Av. Roque Petroni Júnior, 1089",
-        "bairro_cidade_estado_cep": "Morumbi, São Paulo - SP, 04707-000",
-        "piso": "Piso Lazer",
-        "telefone": "(11) 5181-5181"
-    },
-    "AUSTRAL JK IGUATEMI": {
-        "endereco": "Shopping JK Iguatemi, Av. Pres. Juscelino Kubitschek, 2041",
-        "bairro_cidade_estado_cep": "Vila Olímpia, São Paulo - SP, 04543-011",
-        "piso": "Piso Térreo",
-        "telefone": "(11) 3152-6000"
-    },
-    "AUSTRAL IGUATEMI SP": {
-        "endereco": "Shopping Iguatemi, Av. Brig. Faria Lima, 2232",
-        "bairro_cidade_estado_cep": "Jardim Paulistano, São Paulo - SP, 01489-900",
-        "piso": "Piso Faria Lima",
-        "telefone": "(11) 3816-6116"
-    },
-    "AUSTRAL HIGIENÓPOLIS": {
-        "endereco": "Shopping Pátio Higienópolis, Av. Higienópolis, 618",
-        "bairro_cidade_estado_cep": "Higienópolis, São Paulo - SP, 01238-000",
-        "piso": "Piso Higienópolis",
-        "telefone": "(11) 3823-2300"
-    },
-    "AUSTRAL ALPHAVILLE": {
-        "endereco": "Shopping Iguatemi Alphaville, Alameda Rio Negro, 111",
-        "bairro_cidade_estado_cep": "Alphaville, Barueri - SP, 06454-000",
-        "piso": "Piso Rio Negro",
-        "telefone": "(11) 2078-8000"
-    },
-    "AUSTRAL CATARINA OUTLET": {
-        "endereco": "Catarina Fashion Outlet, Rod. Pres. Castello Branco, Km 60",
-        "bairro_cidade_estado_cep": "São Roque - SP, 18132-000",
-        "piso": "Piso Térreo",
-        "telefone": "(11) 4136-7000"
-    }
-}
-
-class SistemaEmailFechamento(ctk.CTk):
+class EmailFechamentoApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # Configuração da janela
-        self.title("Sistema Austral - Gerador de E-mail")
-        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        self.resizable(False, False)
-
-        # Configurações de tema
-        ctk.set_appearance_mode(APPEARANCE_MODE)
-        ctk.set_default_color_theme(COLOR_THEME)
-
-        # Variáveis de controle
-        self.filial_var = ctk.StringVar(value="")
-        self.valor_var = ctk.StringVar(value="")
-        self.nome_var = ctk.StringVar(value="")
-        self.preview_var = ctk.StringVar(value="")
-        self.detalhes_var = ctk.StringVar()
-
-        # Inicialização da interface
-        self.criar_interface()
+        # Configurações da janela principal
+        self.title("E-MAIL DE FECHAMENTO AUSTRAL")
+        self.geometry("600x700")
         self.center_window()
+        self.resizable(False, False)
+        self.configure(fg_color="#0F0F0F")  # Cor da borda externa
 
-        # Bindings para atualização automática do preview
-        self.filial_var.trace_add("write", self.atualizar_preview)
-        self.valor_var.trace_add("write", self.atualizar_preview)
-        self.nome_var.trace_add("write", self.atualizar_preview)
+        # Variáveis
+        self.filial_var = ctk.StringVar()
+        self.valor_var = ctk.StringVar()
+        self.nome_var = ctk.StringVar()
+
+        # Configuração da interface
+        self.criar_interface()
+
+    def center_window(self):
+        """Centraliza a janela na tela"""
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width - 600) // 2
+        y = (screen_height - 700) // 2
+        self.geometry(f"+{x}+{y}")
 
     def criar_interface(self):
-        """Cria a interface do sistema."""
-        # Container principal
-        self.main_container = ctk.CTkFrame(self)
-        self.main_container.pack(padx=20, pady=20, fill="both", expand=True)
+        """Cria a interface principal"""
+        # Frame principal
+        self.main_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="black")
+        self.main_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
-        # Header
-        self.criar_header()
+        # Cabeçalho
+        ctk.CTkLabel(self.main_frame, text="E-MAIL DE FECHAMENTO", font=("Helvetica", 20, "bold")).pack(pady=(10, 20))
 
-        # Seção de entrada de dados
-        self.criar_secao_entrada()
+        # Formulário
+        form_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        form_frame.pack(pady=20, padx=20, fill="x")
 
-        # Seção de preview do email
-        self.criar_secao_preview()
+        # Campo Filial
+        ctk.CTkLabel(form_frame, text="FILIAL:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        filial_combo = ctk.CTkComboBox(form_frame, values=["Filial 1", "Filial 2", "Filial 3"], variable=self.filial_var)
+        filial_combo.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
 
-        # Botões
-        self.criar_area_botoes()
-
-        # Footer
-        self.criar_footer()
-
-    def criar_header(self):
-        """Cria o cabeçalho."""
-        header = ctk.CTkFrame(self.main_container)
-        header.pack(fill="x", pady=(0, 15))
-
-        ctk.CTkLabel(
-            header,
-            text="AUSTRAL",
-            font=ctk.CTkFont(size=32, weight="bold")
-        ).pack(pady=(15, 5))
-
-        ctk.CTkLabel(
-            header,
-            text="Sistema de Geração de E-mails",
-            font=ctk.CTkFont(size=14)
-        ).pack()
-
-    def criar_secao_entrada(self):
-        """Cria a seção de entrada de dados."""
-        entrada_frame = ctk.CTkFrame(self.main_container)
-        entrada_frame.pack(fill="x", pady=(0, 15))
-
-        # Seleção de Filial
-        self.criar_campo_entrada(
-            entrada_frame,
-            "Loja:",
-            lambda parent: ctk.CTkComboBox(
-                parent,
-                values=list(LOJAS.keys()),
-                variable=self.filial_var,
-                width=300,
-                height=35,
-                font=ctk.CTkFont(size=14),
-                command=self.atualizar_detalhes
-            )
-        )
-
-        # Campo Valor
-        self.criar_campo_entrada(
-            entrada_frame,
-            "Valor Total (R$):",
-            lambda parent: ctk.CTkEntry(
-                parent,
-                textvariable=self.valor_var,
-                width=300,
-                height=35,
-                font=ctk.CTkFont(size=14),
-                placeholder_text="Digite o valor total"
-            )
-        )
+        # Campo Valor Total
+        ctk.CTkLabel(form_frame, text="VALOR TOTAL:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        valor_entry = ctk.CTkEntry(form_frame, textvariable=self.valor_var, placeholder_text="Ex: 15000,00")
+        valor_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
         # Campo Nome
-        self.criar_campo_entrada(
-            entrada_frame,
-            "Seu Nome:",
-            lambda parent: ctk.CTkEntry(
-                parent,
-                textvariable=self.nome_var,
-                width=300,
-                height=35,
-                font=ctk.CTkFont(size=14),
-                placeholder_text="Digite seu nome"
-            )
-        )
+        ctk.CTkLabel(form_frame, text="SEU NOME:").grid(row=2, column=0, sticky="w", padx=5, pady=5)
+        nome_entry = ctk.CTkEntry(form_frame, textvariable=self.nome_var, placeholder_text="Digite seu nome")
+        nome_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
 
-    def criar_campo_entrada(self, parent, label_text, widget_creator):
-        """Cria um campo de entrada com label."""
-        frame = ctk.CTkFrame(parent)
-        frame.pack(fill="x", padx=15, pady=8)
-
-        ctk.CTkLabel(
-            frame,
-            text=label_text,
-            font=ctk.CTkFont(size=14),
-            width=100,
-            anchor="w"
-        ).pack(side="left")
-
-        widget = widget_creator(frame)
-        widget.pack(side="left", padx=(5, 0))
-
-    def criar_secao_preview(self):
-        """Cria a seção de preview do email."""
-        preview_frame = ctk.CTkFrame(self.main_container)
-        preview_frame.pack(fill="both", expand=True, pady=(0, 15))
-
-        # Título do preview
-        ctk.CTkLabel(
-            preview_frame,
-            text="PRÉVIA DO E-MAIL",
-            font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(pady=10)
-
-        # Campo de texto para o preview
-        self.preview_text = ctk.CTkTextbox(
-            preview_frame,
-            font=ctk.CTkFont(size=14),
-            wrap="word",
-            height=200
-        )
-        self.preview_text.pack(fill="both", expand=True, padx=15, pady=(0, 10))
-
-    def criar_area_botoes(self):
-        """Cria a área de botões."""
-        botoes_frame = ctk.CTkFrame(self.main_container)
-        botoes_frame.pack(fill="x", pady=(0, 15))
-
-        # Botão de copiar
+        # Botão para gerar e-mail
         ctk.CTkButton(
-            botoes_frame,
-            text="COPIAR PARA ÁREA DE TRANSFERÊNCIA",
-            command=self.copiar_email,
-            font=ctk.CTkFont(size=14),
-            height=40,
-            fg_color="#4CAF50",
-            hover_color="#45a049"
-        ).pack(side="left", padx=5, expand=True)
+            self.main_frame, text="GERAR E-MAIL", command=self.gerar_email, width=150
+        ).pack(pady=(10, 20))
 
-        # Botão de limpar
+        # Área para exibir o e-mail
+        self.email_text = ctk.CTkTextbox(self.main_frame, wrap="word", font=("Helvetica", 12), height=200)
+        self.email_text.pack(padx=20, pady=10, fill="both", expand=True)
+        self.email_text.configure(state="disabled")
+
+        # Botão para copiar o e-mail
         ctk.CTkButton(
-            botoes_frame,
-            text="LIMPAR",
-            command=self.limpar_campos,
-            font=ctk.CTkFont(size=14),
-            height=40,
-            fg_color="#FF4444",
-            hover_color="#CC3333"
-        ).pack(side="left", padx=5, expand=True)
+            self.main_frame, text="COPIAR E-MAIL", command=self.copiar_email, width=150
+        ).pack(pady=(10, 20))
+
+        # Rodapé
+        self.criar_footer()
 
     def criar_footer(self):
         """Cria o rodapé."""
-        footer = ctk.CTkFrame(self.main_container)
-        footer.pack(fill="x")
+        self.footer = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.footer.pack(side="bottom", fill="x", pady=10)
 
-        ctk.CTkLabel(
-            footer,
-            text="© 2024 Shigi - GitHub @brunoshigi",
-            font=ctk.CTkFont(size=12)
-        ).pack(pady=10)
+        # Status e hora
+        self.status_label = ctk.CTkLabel(self.footer, text="", font=ctk.CTkFont(size=10))
+        self.status_label.pack(side="left", padx=10)
 
-    def atualizar_preview(self, *args):
-        """Atualiza o preview do email."""
-        if not all([self.filial_var.get(), self.valor_var.get(), self.nome_var.get()]):
-            return
-
-        data_atual = datetime.now().strftime("%d/%m/%Y")
-        valor_formatado = self.formatar_moeda(self.valor_var.get())
-
-        corpo_email = (
-            f"Boa noite,\n\n"
-            f"Segue o resumo do fechamento do dia {data_atual} da filial {self.filial_var.get()}:\n\n"
-            f"VALOR TOTAL VENDIDO: {valor_formatado}\n\n"
-            f"Em anexo você encontrará:\n"
-            f"- FECHAMENTO DETALHADO\n"
-            f"- ACUMULADO DIÁRIO\n\n"
-            f"Atenciosamente,\n"
-            f"{self.nome_var.get()}"
+        # Botão de saída
+        self.btn_sair = ctk.CTkButton(
+            self.footer,
+            text="SAIR",
+            width=70,
+            height=28,
+            corner_radius=6,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            command=self.destroy,
+            fg_color="red"
         )
+        self.btn_sair.pack(side="right", padx=10)
 
-        self.preview_text.delete("1.0", "end")
-        self.preview_text.insert("1.0", corpo_email)
-
-    def atualizar_detalhes(self, selection=None):
-        """Atualiza os detalhes do local selecionado."""
-        local = self.filial_var.get()
-        if local in LOJAS:
-            detalhes = LOJAS[local]
-            texto_detalhes = (
-                f"Endereço: {detalhes['endereco']}\n"
-                f"Local: {detalhes['bairro_cidade_estado_cep']}\n"
-                f"Complemento: {detalhes['piso']}\n"
-                f"Telefone: {detalhes['telefone']}"
-            )
-            self.detalhes_var.set(texto_detalhes)
-        else:
-            self.detalhes_var.set("")
-            data_atual = datetime.now().strftime("%d/%m/%Y")
-            valor_formatado = self.formatar_moeda(self.valor_var.get())
-            local = self.filial_var.get()
-            nome = self.nome_var.get()
-
-    def copiar_email(self):
-        """Copia o email para a área de transferência."""
-        if not self.validar_campos():
-            return
-
-        email = self.preview_text.get("1.0", "end-1c")
-        self.clipboard_clear()
-        self.clipboard_append(email)
-        messagebox.showinfo("Sucesso", "E-mail copiado para a área de transferência!")
-
-    def center_window(self):
-        """Centraliza a janela na tela do usuário."""
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        x = (screen_width - WINDOW_WIDTH) // 2
-        y = (screen_height - WINDOW_HEIGHT) // 2
-        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{x}+{y}")
-
-    def gerar_email(self):
-        """Gera o corpo do e-mail."""
-        if not self.validar_campos():
-            return
-        self.detalhes_var.set("")
-        data_atual = datetime.now().strftime("%d/%m/%Y")
-        local = self.filial_var.get()
-        valor_formatado = self.formatar_moeda(self.valor_var.get())
-        nome = self.nome_var.get()
-        corpo_email = (
-            f"Boa noite,\n\n"
-            f"Segue o resumo do fechamento do dia {data_atual} da filial {local}:\n\n"
-            f"VALOR TOTAL VENDIDO: {valor_formatado}\n\n"
-            f"Em anexo você encontrará:\n"
-            f"- FECHAMENTO DETALHADO\n"
-            f"- ACUMULADO DIÁRIO\n\n"
-            f"Atenciosamente,\n"
-            f"{nome}"
+        # Créditos do desenvolvedor
+        self.label_footer = ctk.CTkLabel(
+            self.footer, text="© 2025 Shigi - GitHub @brunoshigi", font=ctk.CTkFont(size=12)
         )
-
-        self.exibir_preview(corpo_email)
-
-    def exibir_preview(self, corpo_email):
-        """Exibe o preview do e-mail."""
-        preview = ctk.CTkToplevel(self)
-        preview.title("Pré-visualização do E-mail")
-        preview.geometry("600x500")
-        
-        # Centraliza a janela de preview
-        preview.update_idletasks()
-        width = preview.winfo_width()
-        height = preview.winfo_height()
-        x = (preview.winfo_screenwidth() // 2) - (width // 2)
-        y = (preview.winfo_screenheight() // 2) - (height // 2)
-        preview.geometry(f"+{x}+{y}")
-        preview.resizable(False, False)
-
-        # Frame principal do preview
-        frame_conteudo = ctk.CTkFrame(preview)
-        frame_conteudo.pack(padx=20, pady=20, fill="both", expand=True)
-
-        # Título do preview
-        ctk.CTkLabel(
-            frame_conteudo,
-            text="PRÉ-VISUALIZAÇÃO DO E-MAIL",
-            font=ctk.CTkFont(size=18, weight="bold")
-        ).pack(pady=(15, 20))
-
-        # Campo de texto com o conteúdo do email
-        texto = ctk.CTkTextbox(
-            frame_conteudo,
-            wrap="word",
-            font=ctk.CTkFont(size=14),
-            height=300
-        )
-        texto.pack(padx=15, pady=(0, 20), fill="both", expand=True)
-        texto.insert("1.0", corpo_email)
-        texto.configure(state="disabled")
-
-        # Frame para os botões
-        frame_botoes = ctk.CTkFrame(frame_conteudo, fg_color="transparent")
-        frame_botoes.pack(fill="x", padx=15, pady=(0, 15))
-
-        # Botões
-        ctk.CTkButton(
-            frame_botoes,
-            text="COPIAR PARA ÁREA DE TRANSFERÊNCIA",
-            command=lambda: self.copiar_para_area(corpo_email),
-            font=ctk.CTkFont(size=14),
-            fg_color="#4CAF50",
-            hover_color="#45a049",
-            height=40
-        ).pack(side="left", padx=5, expand=True)
-
-        ctk.CTkButton(
-            frame_botoes,
-            text="FECHAR",
-            command=preview.destroy,
-            font=ctk.CTkFont(size=14),
-            fg_color="#FF4444",
-            hover_color="#CC3333",
-            height=40
-        ).pack(side="left", padx=5, expand=True)
-
-    def copiar_para_area(self, texto):
-        """Copia o texto para a área de transferência."""
-        self.clipboard_clear()
-        self.clipboard_append(texto)
-        messagebox.showinfo("Sucesso", "E-mail copiado para a área de transferência!")
-
-    def limpar_campos(self):
-        """Limpa os campos do formulário."""
-        self.filial_var.set("")
-        self.valor_var.set("")
-        self.nome_var.set("")
-        self.detalhes_var.set("")
+        self.label_footer.pack(side="right", padx=10)
 
     def validar_campos(self):
-        """Valida os campos obrigatórios."""
+        """Valida os campos antes de gerar o e-mail"""
         if not self.filial_var.get():
-            messagebox.showwarning("Campo Obrigatório", "Por favor, selecione um local.")
+            messagebox.showwarning("Atenção", "Selecione uma filial!")
             return False
         if not self.valor_var.get():
-            messagebox.showwarning("Campo Obrigatório", "Por favor, digite o valor total.")
+            messagebox.showwarning("Atenção", "Digite o valor total!")
             return False
-        if not self.nome_var.get():
-            messagebox.showwarning("Campo Obrigatório", "Por favor, digite seu nome.")
+        if not self.nome_var.get().strip():
+            messagebox.showwarning("Atenção", "Digite seu nome!")
             return False
-
-        # Validação do formato do valor
-        try:
-            valor = self.valor_var.get().replace(".", "").replace(",", ".")
-            float(valor)
-        except ValueError:
-            messagebox.showwarning("Valor Inválido", "Por favor, digite um valor numérico válido.")
-            return False
-
         return True
 
-    def formatar_moeda(self, valor):
-        """Formata o valor como moeda brasileira."""
+    def gerar_email(self):
+        """Gera o e-mail de fechamento"""
+        if not self.validar_campos():
+            return
+
         try:
-            # Remove formatação existente
-            valor = valor.replace(".", "").replace(",", ".")
-            valor_float = float(valor)
-            
-            # Formata para o padrão brasileiro
-            return f"R$ {valor_float:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
-        except ValueError:
-            return "R$ 0,00"
+            filial = self.filial_var.get()
+            valor = self.valor_var.get().replace(",", ".")
+            nome = self.nome_var.get().strip()
+            data_atual = datetime.now().strftime("%d/%m/%Y")
+
+            # Formatação do valor
+            try:
+                valor_formatado = f"R$ {float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            except ValueError:
+                messagebox.showerror("Erro", "Valor inválido! Use apenas números e vírgula.")
+                return
+
+            # Corpo do e-mail
+            email_body = (
+                f"Boa noite,\n\n"
+                f"Segue o resumo do fechamento do dia {data_atual} da filial {filial}:\n\n"
+                f"VALOR TOTAL VENDIDO: {valor_formatado}\n\n"
+                "Em anexo, você encontrará o fechamento detalhado e o acumulado diário, ambos referentes ao dia.\n\n"
+                "Atenciosamente,\n"
+                f"{nome}"
+            )
+
+            # Exibe o e-mail gerado
+            self.email_text.configure(state="normal")
+            self.email_text.delete("1.0", "end")
+            self.email_text.insert("1.0", email_body)
+            self.email_text.configure(state="disabled")
+
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao gerar o e-mail: {str(e)}")
+
+    def copiar_email(self):
+        """Copia o e-mail para a área de transferência"""
+        email_body = self.email_text.get("1.0", "end").strip()
+        if not email_body:
+            messagebox.showwarning("Atenção", "Nenhum e-mail para copiar!")
+            return
+
+        self.clipboard_clear()
+        self.clipboard_append(email_body)
+        messagebox.showinfo("Sucesso", "E-mail copiado para a área de transferência!")
 
 if __name__ == "__main__":
-    app = SistemaEmailFechamento()
+    app = EmailFechamentoApp()
     app.mainloop()

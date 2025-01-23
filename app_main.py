@@ -31,8 +31,9 @@ class SistemaAustral(ctk.CTk):
         self.geometry(f"600x700+{x}+{y}")
 
         # Frame principal
-        self.main_frame = ctk.CTkFrame(self, corner_radius=15)
+        self.main_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="black")
         self.main_frame.pack(padx=20, pady=20, fill="both", expand=True)
+        self.configure(fg_color="#0F0F0F")
 
         # Cria header, área principal e footer
         self.criar_header()
@@ -117,6 +118,7 @@ class SistemaAustral(ctk.CTk):
             height=28,
             corner_radius=6,
             font=ctk.CTkFont(size=11, weight="bold"),
+            fg_color="red",
             command=self.sair_sistema
         )
         self.btn_sair.pack(side="right", padx=10)

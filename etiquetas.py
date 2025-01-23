@@ -5,26 +5,25 @@ from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 import os
 import tempfile
-from lojas import todos_locais
 
 # Configurações iniciais
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 # Tenta importar as lojas do módulo
-try:
-    from lojas import todos_locais, lojas, matriz, estoque, servicos
-    LOJAS = [local["loja"] for local in todos_locais]
-except ImportError:
-    messagebox.showerror("Erro", "Não foi possível carregar o arquivo de lojas.")
-    LOJAS = ["ERRO AO CARREGAR LOJAS"]
-except Exception as e:
-    messagebox.showerror("Erro", f"Erro ao carregar lojas: {str(e)}")
-    LOJAS = ["ERRO AO CARREGAR LOJAS"]
+LOJAS = [
+    "AUSTRAL MORUMBI SHOPPING",
+    "AUSTRAL JK IGUATEMI",
+    "AUSTRAL IGUATEMI SP",
+    "AUSTRAL HIGIENÓPOLIS",
+    "AUSTRAL ALPHAVILLE",
+    "AUSTRAL CATARINA OUTLET"
+]
 
 class SistemaEtiquetas(ctk.CTk):
     def __init__(self):
         super().__init__()
+        self.configure(fg_color="#0F0F0F")
         
         # Verifica se as lojas foram carregadas corretamente
         if LOJAS == ["ERRO AO CARREGAR LOJAS"]:
@@ -67,11 +66,11 @@ class SistemaEtiquetas(ctk.CTk):
     def criar_interface(self):
         """Cria a interface principal do sistema com layout otimizado"""
         # Frame principal com margens adequadas
-        self.main_frame = ctk.CTkFrame(self)
+        self.main_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="black")
         self.main_frame.pack(padx=20, pady=20, fill="both", expand=True)
         
         # Frame do cabeçalho para título e subtítulo
-        header_frame = ctk.CTkFrame(self.main_frame)
+        header_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(20, 10))
         
         # Título com tamanho e espaçamento ajustados
@@ -86,16 +85,16 @@ class SistemaEtiquetas(ctk.CTk):
         self.label_subtitulo = ctk.CTkLabel(
             header_frame,
             text="Sistema de Geração de Etiquetas",
-            font=ctk.CTkFont(size=16)
+            font=ctk.CTkFont(size=16), fg_color="black"
         )
         self.label_subtitulo.pack(pady=(0, 20))
         
         # Frame para os botões de modo com espaçamento melhorado
-        self.frame_modos = ctk.CTkFrame(self.main_frame)
+        self.frame_modos = ctk.CTkFrame(self.main_frame, fg_color="black")
         self.frame_modos.pack(pady=20)
         
         # Primeiro frame para os dois primeiros botões
-        buttons_frame1 = ctk.CTkFrame(self.frame_modos)
+        buttons_frame1 = ctk.CTkFrame(self.frame_modos, fg_color="black")
         buttons_frame1.pack(pady=(0, 10))
         
         # Botões da primeira linha
@@ -120,7 +119,7 @@ class SistemaEtiquetas(ctk.CTk):
         self.btn_transfer.pack(side="left", padx=10)
         
         # Frame para o botão de reserva
-        buttons_frame2 = ctk.CTkFrame(self.frame_modos)
+        buttons_frame2 = ctk.CTkFrame(self.frame_modos, fg_color="black")
         buttons_frame2.pack()
         
         # Botão de reserva centralizado
@@ -136,7 +135,7 @@ class SistemaEtiquetas(ctk.CTk):
         
         # Frame para conteúdo dinâmico com margens apropriadas
         self.frame_conteudo = ctk.CTkFrame(
-            self.main_frame
+            self.main_frame, corner_radius=15, fg_color="black"
         )
         self.frame_conteudo.pack(pady=20, fill="both", expand=True)
         
@@ -145,22 +144,22 @@ class SistemaEtiquetas(ctk.CTk):
 
     def criar_footer(self):
         """Cria o rodapé com layout melhorado"""
-        self.footer = ctk.CTkFrame(self.main_frame)
+        self.footer = ctk.CTkFrame(self.main_frame, fg_color="black")
         self.footer.pack(side="bottom", fill="x", pady=(20, 10))
         
         # Status e hora com fonte legível
         self.status_label = ctk.CTkLabel(
             self.footer,
             text="",
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12), fg_color="black"
         )
         self.status_label.pack(side="left", padx=20)
         
         # Créditos com fonte legível
         self.label_footer = ctk.CTkLabel(
             self.footer,
-            text="© 2024 Shigi - GitHub @brunoshigi",
-            font=ctk.CTkFont(size=12)
+            text="© 2025 Shigi - GitHub @brunoshigi",
+            font=ctk.CTkFont(size=12), fg_color="black"
         )
         self.label_footer.pack(side="right", padx=20)
         
@@ -179,30 +178,21 @@ class SistemaEtiquetas(ctk.CTk):
             widget.destroy()
 
     def mudar_modo(self, modo):
-        """Gerencia a mudança entre os modos de etiqueta"""
-        # Destaca o botão selecionado
-        for btn in [self.btn_delivery, self.btn_transfer, self.btn_reserve]:
-            btn.configure(fg_color="transparent")
-        
-        # Configura o botão ativo
-        if modo == "delivery":
-            self.btn_delivery.configure(fg_color="blue")
-        elif modo == "transfer":
-            self.btn_transfer.configure(fg_color="blue")
-        elif modo == "reserve":
-            self.btn_reserve.configure(fg_color="blue")
-        
-        # Atualiza o modo e interface
-        self.modo_atual = modo
+        """Muda o modo de geração de etiquetas"""
         self.limpar_frame_conteudo()
         
-        # Carrega a interface correspondente
         if modo == "delivery":
             self.criar_interface_delivery()
         elif modo == "transfer":
             self.criar_interface_transfer()
         elif modo == "reserve":
             self.criar_interface_reserve()
+        
+        self.modo_atual = modo # Atualiza o modo atual,
+        self.grab_set() # Foca na janela
+        self.focus_force() # Força o foco
+
+
 
     def criar_interface_delivery(self):
         """Interface para etiquetas de entrega"""
@@ -472,7 +462,7 @@ class SistemaEtiquetas(ctk.CTk):
 
             # Inserção do logo
             try:
-                logo = Image.open("logo.png")
+                logo = Image.open("assets/logo.png")
                 logo_width = 300
                 logo = logo.resize((logo_width, int(logo.height * logo_width / logo.width)))
                 x_logo = (self.LARGURA_PAPEL - logo_width) // 2
@@ -485,11 +475,8 @@ class SistemaEtiquetas(ctk.CTk):
             # Informações da filial
             draw.text((self.MARGEM, y), "FILIAL:", fill="blue", font=fonte_titulo)
             y += 35
-            loja_info = self.get_info_from_all_lists(self.loja_var.get())
-            if loja_info:
-                nome_loja = loja_info["loja"].split(" - ")[0] if " - " in loja_info["loja"] else loja_info["loja"]
-                draw.text((self.MARGEM, y), nome_loja, fill="black", font=fonte_cliente)
-                y += 40
+            draw.text((self.MARGEM, y), self.loja_var.get().upper(), fill="black", font=fonte_cliente)
+            y += 40
 
             # Nome do cliente
             draw.text((self.MARGEM, y), "A/C CLIENTE:", fill="blue", font=fonte_titulo)
@@ -573,7 +560,7 @@ class SistemaEtiquetas(ctk.CTk):
 
             # Logo Austral
             try:
-                logo = Image.open("logo.png")
+                logo = Image.open("assets/logo.png")
                 logo_width = 300
                 logo = logo.resize((logo_width, int(logo.height * logo_width / logo.width)))
                 x_logo = (self.LARGURA_PAPEL - logo_width) // 2
@@ -598,11 +585,8 @@ class SistemaEtiquetas(ctk.CTk):
             # Informações da filial
             draw.text((self.MARGEM, y), "FILIAL:", fill="blue", font=fonte_titulo)
             y += 23
-            loja_info = self.get_info_from_all_lists(self.loja_var.get())
-            if loja_info:
-                nome_loja = loja_info["loja"].split(" - ")[0] if " - " in loja_info["loja"] else loja_info["loja"]
-                draw.text((self.MARGEM, y), nome_loja, fill="black", font=fonte_texto)
-                y += 35
+            draw.text((self.MARGEM, y), self.loja_var.get().upper(), fill="black", font=fonte_texto)
+            y += 35
 
             # Linha divisória
             draw.line([(self.MARGEM, y), (self.LARGURA_IMPRESSAO - self.MARGEM, y)], 
@@ -672,10 +656,10 @@ class SistemaEtiquetas(ctk.CTk):
             y = self.MARGEM
             
             # Informações do destino
-            destino_info = self.get_info_from_all_lists(self.destino_var.get())
+            destino_info = self.destino_var.get().upper()
             
             # Box e Interfone (se for estoque)
-            if destino_info and ("ESTOQUE" in destino_info["loja"] or "BOX" in destino_info.get("piso", "")):
+            if "ESTOQUE" in destino_info or "BOX" in destino_info:
                 box_text = "BOX 20011\nTOCAR INTERFONE 0525"
                 msg_width = max(draw.textlength("BOX 20011", fonte_alerta),
                               draw.textlength("TOCAR INTERFONE 0525", fonte_alerta))
@@ -696,7 +680,7 @@ class SistemaEtiquetas(ctk.CTk):
 
             # Logo Austral
             try:
-                logo = Image.open("logo.png")
+                logo = Image.open("assets/logo.png")
                 logo_width = 300
                 logo = logo.resize((logo_width, int(logo.height * logo_width / logo.width)))
                 x_logo = (self.LARGURA_PAPEL - logo_width) // 2
@@ -709,40 +693,23 @@ class SistemaEtiquetas(ctk.CTk):
             # Origem
             draw.text((self.MARGEM, y), "FILIAL ORIGEM:", fill="blue", font=fonte_titulo)
             y += 35
-            origem_info = self.get_info_from_all_lists(self.origem_var.get())
-            if origem_info:
-                nome_origem = origem_info["loja"].split(" - ")[0] if " - " in origem_info["loja"] else origem_info["loja"]
-                draw.text((self.MARGEM, y), nome_origem, fill="black", font=fonte_origem)
-                y += 40
+            draw.text((self.MARGEM, y), self.origem_var.get().upper(), fill="black", font=fonte_origem)
+            y += 40
 
             # Destino
             draw.text((self.MARGEM, y), "FILIAL DESTINO:", fill="blue", font=fonte_titulo)
             y += 35
-            if destino_info:
-                nome_destino = destino_info["loja"]
-                draw.text((self.MARGEM, y), nome_destino, fill="black", font=fonte_destino)
-                y += 30
+            draw.text((self.MARGEM, y), self.destino_var.get().upper(), fill="black", font=fonte_destino)
+            y += 30
                 
-                # Linha divisória
-                draw.line([(self.MARGEM, y), (self.LARGURA_IMPRESSAO - self.MARGEM, y)], 
-                         fill="black", width=1)
-                y += 20
+            # Linha divisória
+            draw.line([(self.MARGEM, y), (self.LARGURA_IMPRESSAO - self.MARGEM, y)], 
+                     fill="black", width=1)
+            y += 20
                 
-                # Endereço do destino
-                draw.text((self.MARGEM, y), destino_info["endereco"], fill="black", font=fonte_info)
-                y += 25
-                draw.text((self.MARGEM, y), destino_info["bairro_cidade_estado_cep"], fill="black", font=fonte_info)
-                y += 25
-                
-                # Informações adicionais do destino
-                if destino_info.get("piso"):
-                    pass  # Exemplo: exibir destino_info["piso"]
-                if destino_info.get("telefone"):
-                    pass  # Exemplo: exibir destino_info["telefone"]
-
             # Data e hora
             data_hora = datetime.now().strftime("%d/%m/%Y %H:%M")
-            if destino_info and ("ESTOQUE" in destino_info["loja"] or "BOX" in destino_info.get("piso", "")):
+            if "ESTOQUE" in destino_info or "BOX" in destino_info:
                 y = self.ALTURA_ETIQUETA - 80
                 draw.text((self.MARGEM, y), data_hora, fill="red", font=fonte_info)
                 y += 30
@@ -761,13 +728,6 @@ class SistemaEtiquetas(ctk.CTk):
             self.grab_set()
             self.focus_force()
             return None
-
-    def get_info_from_all_lists(self, loja_nome):
-        """Obtém informações completas da loja a partir do nome"""
-        for local in todos_locais:
-            if local["loja"].strip() == loja_nome.strip():
-                return local
-        return None
 
     def validar_campos_delivery(self):
         """Valida campos do modo delivery"""
