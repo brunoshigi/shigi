@@ -9,7 +9,7 @@ ctk.set_default_color_theme("blue")
 # Importações dos módulos de aplicação
 from oms import PedidoSinOMSApp
 from defeitos import DefectManagerApp
-from fechamento import SistemaEmailFechamento
+from fechamento import EmailFechamentoApp
 from etiquetas import SistemaEtiquetas
 from inventario import InventoryApp
 from fundo_fixo import GestorFundoFixo
@@ -47,7 +47,7 @@ class SistemaAustral(ctk.CTk):
         self.app_mapping = {
             "CONTROLE PEDIDOS OMS": PedidoSinOMSApp,
             "PLANILHA DEFEITOS": DefectManagerApp,
-            "E-MAIL FECHAMENTO": SistemaEmailFechamento,
+            "E-MAIL FECHAMENTO": EmailFechamentoApp,
             "GERADOR DE ETIQUETAS": SistemaEtiquetas,
             "INVENTÁRIO": InventoryApp,
             "CONTROLE FUNDO CAIXA": GestorFundoFixo
@@ -75,14 +75,12 @@ class SistemaAustral(ctk.CTk):
         self.buttons_frame.pack(pady=10)
 
         botoes = [
-            "REGISTRO VM DIÁRIO",
             "CONTROLE PEDIDOS OMS",
             "PLANILHA DEFEITOS",
             "E-MAIL FECHAMENTO",
             "GERADOR DE ETIQUETAS",
             "INVENTÁRIO",
             "CONTROLE FUNDO CAIXA",
-            "ESCALA DE FOLGAS"
         ]
 
         for texto_botao in botoes:

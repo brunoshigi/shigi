@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from datetime import datetime
+from lojas import lojas 
 
 # Configurações iniciais
 ctk.set_appearance_mode("Dark")
@@ -48,7 +49,7 @@ class EmailFechamentoApp(ctk.CTk):
 
         # Campo Filial
         ctk.CTkLabel(form_frame, text="FILIAL:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
-        filial_combo = ctk.CTkComboBox(form_frame, values=["Filial 1", "Filial 2", "Filial 3"], variable=self.filial_var)
+        filial_combo = ctk.CTkComboBox(form_frame, values=[x["loja"] for x in lojas], variable=self.filial_var)
         filial_combo.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
 
         # Campo Valor Total
@@ -128,7 +129,7 @@ class EmailFechamentoApp(ctk.CTk):
         try:
             filial = self.filial_var.get()
             valor = self.valor_var.get().replace(",", ".")
-            nome = self.nome_var.get().strip()
+            nome = self.nome_var.get().strip().upper()
             data_atual = datetime.now().strftime("%d/%m/%Y")
 
             # Formatação do valor
@@ -168,6 +169,9 @@ class EmailFechamentoApp(ctk.CTk):
         self.clipboard_append(email_body)
         messagebox.showinfo("Sucesso", "E-mail copiado para a área de transferência!")
 
+def create_app():
+    return EmailFechamentoApp()
+
 if __name__ == "__main__":
-    app = EmailFechamentoApp()
+    app = create_app()
     app.mainloop()

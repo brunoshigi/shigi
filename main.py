@@ -1,8 +1,8 @@
 import customtkinter as ctk
-from login import TelaLogin
+from app_main import SistemaAustral
 
 
 if __name__ == "__main__":
     from app_main import SistemaAustral
-    app = TelaLogin()
+    app = SistemaAustral()
     app.mainloop()
