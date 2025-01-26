@@ -109,17 +109,13 @@ class SistemaAustral(ctk.CTk):
         self.status_label.pack(side="left", padx=10)
 
         # Botão de saída
-        self.btn_sair = ctk.CTkButton(
+        self.sair_button = ctk.CTkButton(
             self.footer,
             text="SAIR",
-            width=70,
-            height=28,
-            corner_radius=6,
-            font=ctk.CTkFont(size=11, weight="bold"),
-            fg_color="red",
-            command=self.sair_sistema
+            command=self.sair_sistema,
+            fg_color="red"
         )
-        self.btn_sair.pack(side="right", padx=10)
+        self.sair_button.pack(side="right", padx=10)
 
         # Créditos do desenvolvedor
         self.label_footer = ctk.CTkLabel(

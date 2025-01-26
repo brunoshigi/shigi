@@ -129,6 +129,7 @@ class EmailFechamentoApp(ctk.CTk):
         try:
             filial = self.filial_var.get()
             valor = self.valor_var.get().replace(",", ".")
+
             nome = self.nome_var.get().strip().upper()
             data_atual = datetime.now().strftime("%d/%m/%Y")
 

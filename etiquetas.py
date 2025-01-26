@@ -162,9 +162,20 @@ class SistemaEtiquetas(ctk.CTk):
             font=ctk.CTkFont(size=12), fg_color="black"
         )
         self.label_footer.pack(side="right", padx=20)
+        # Botão de saída
+        self.btn_sair = ctk.CTkButton(
+            self.footer,
+            text="SAIR",
+            command=self.sair_sistema,
+            fg_color="red"
+        )
+        self.btn_sair.pack(side="right", padx=10)
         
         # Inicia atualização do horário
         self.atualizar_hora()
+
+    def sair_sistema(self):
+        self.destroy()
 
     def atualizar_hora(self):
         """Atualiza o horário no rodapé com formato melhorado"""
