@@ -16,21 +16,31 @@ FONT_ENTRY = ("Arial", 14)
 class InventoryApp:
     def __init__(self):
         self.root = ctk.CTk()
-        
-        # Configurações da janela
-        self.root.title("INVENTÁRIO - CONTAGEM DE ESTOQUE")
+        self.root.title("SISTEMA AUSTRAL - CONTROLE DE INVENTÁRIO")
+        self.root.geometry("1400x800")
+        self.root.resizable(False, False)
+        self.root.configure(fg_color="#0F0F0F")
         self.center_window()
-        
-        # Variáveis
-        self.local_atual = ctk.StringVar(value="loja")
-        self.codigo = ctk.StringVar()
-        self.inventario = {
-            'loja': {},
-            'estoque': {},
-            'quartinho_escada': {}
-        }
-        self.historico_codigos = []
-        
+
+        # Frame principal
+        self.main_frame = ctk.CTkFrame(
+            self.root,
+            corner_radius=15,
+            fg_color="black"
+        )
+        self.main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+
+        # Título
+        ctk.CTkLabel(
+            self.main_frame,
+            text="CONTROLE DE INVENTÁRIO",
+            font=("Helvetica", 20, "bold")
+        ).grid(row=0, column=0, pady=(10, 20))
+
+        # Setup
+        self.setup_variables()
         self.setup_ui()
         self.entry_codigo.focus()
 
@@ -46,200 +56,161 @@ class InventoryApp:
         self.root.minsize(900, 500)  # Reduzido de 1200, 700
 
     def setup_ui(self):
-        """Configura a interface do usuário"""
-        # Container principal
-        self.main_frame = ctk.CTkFrame(self.root)
-        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)  # Reduzido de 20, 20
-
-        # Título
-        title_label = ctk.CTkLabel(
-            self.main_frame,
-            text="SISTEMA DE INVENTÁRIO",
-            font=FONT_TITLE
-        )
-        title_label.pack(pady=(0, 20))
-
-        # Frame de seleção de local
-        self.create_location_frame()
+        # Frame de local
+        location_frame = ctk.CTkFrame(self.main_frame, corner_radius=10)
+        location_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
         
-        # Frame de entrada
-        self.create_input_frame()
-        
-        # Frame de histórico
-        self.create_history_frame()
-        
-        # Frame de ações e status
-        self.create_status_frame()
-        self.create_action_frame()
-
-    def create_location_frame(self):
-        """Cria o frame de seleção de local"""
-        location_frame = ctk.CTkFrame(self.main_frame)
-        location_frame.pack(fill="x", padx=10, pady=10)
-
         ctk.CTkLabel(
             location_frame,
             text="LOCAL DA CONTAGEM:",
-            font=FONT_LABEL
+            font=("Arial Bold", 14)
         ).pack(side="left", padx=20)
 
-        locations = [
-            ('LOJA', 'loja'),
-            ('ESTOQUE', 'estoque'),
-            ('QUARTINHO ESCADA', 'quartinho_escada')
-        ]
-
-        for text, value in locations:
+        for text, value in [('LOJA', 'loja'), ('ESTOQUE', 'estoque'), ('QUARTINHO', 'quartinho_escada')]:
             ctk.CTkRadioButton(
                 location_frame,
                 text=text,
                 value=value,
                 variable=self.local_atual,
-                font=FONT_LABEL
+                font=("Arial", 14)
             ).pack(side="left", padx=20)
 
-    def create_input_frame(self):
-        """Cria o frame de entrada de códigos"""
-        input_frame = ctk.CTkFrame(self.main_frame)
-        input_frame.pack(fill="x", padx=10, pady=10)
+        # Frame de entrada
+        input_frame = ctk.CTkFrame(self.main_frame, corner_radius=10)
+        input_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
 
-        # Label código
         ctk.CTkLabel(
-            input_frame,
+            input_frame, 
             text="CÓDIGO:",
-            font=FONT_LABEL
+            font=("Arial Bold", 14)
         ).pack(side="left", padx=10)
 
-        # Entry código
         self.entry_codigo = ctk.CTkEntry(
             input_frame,
             textvariable=self.codigo,
-            width=200,  # Reduzido de 300
-            height=35,  # Reduzido de 40
-            font=FONT_ENTRY
+            width=300,
+            height=35,
+            font=("Arial", 14)
         )
         self.entry_codigo.pack(side="left", padx=10)
         self.entry_codigo.bind('<Return>', self.registrar_codigo)
 
-        # Botões
         ctk.CTkButton(
             input_frame,
             text="REGISTRAR",
             command=self.registrar_codigo,
-            width=120,  # Reduzido de 150
-            height=35,  # Reduzido de 40
-            font=FONT_LABEL
-        ).pack(side="left", padx=5)  # Reduzido padding
+            width=200,
+            height=35,
+            font=("Arial Bold", 14),
+            fg_color="#00AEEF",
+            hover_color="#1976D2"
+        ).pack(side="left", padx=10)
 
         ctk.CTkButton(
             input_frame,
             text="DESFAZER",
             command=self.desfazer_ultimo,
-            width=120,  # Reduzido de 150
-            height=35,  # Reduzido de 40
-            font=FONT_LABEL,
-            fg_color="#FF4444",
+            width=200,
+            height=35,
+            font=("Arial Bold", 14),
+            fg_color="red",
             hover_color="#CC3333"
-        ).pack(side="left", padx=5)  # Reduzido padding
+        ).pack(side="left", padx=10)
 
-    def create_history_frame(self):
-        """Cria o frame de histórico"""
-        history_frame = ctk.CTkFrame(self.main_frame)
-        history_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        # Frame da tabela
+        table_frame = ctk.CTkFrame(self.main_frame, corner_radius=10)
+        table_frame.grid(row=3, column=0, padx=20, pady=10, sticky="nsew")
+        table_frame.grid_rowconfigure(0, weight=1)
+        table_frame.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(
-            history_frame,
-            text="HISTÓRICO DE LEITURAS",
-            font=FONT_LABEL
-        ).pack(pady=10)
-
-        # Frame para o Treeview e Scrollbar
-        tree_frame = ctk.CTkFrame(history_frame)
-        tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-
-        # Estilo para o Treeview
         style = ttk.Style()
         style.configure(
             "Treeview",
-            font=('Arial', 12),
-            rowheight=30,
             background="#2a2d2e",
             foreground="white",
-            fieldbackground="#2a2d2e"
+            fieldbackground="#2a2d2e",
+            rowheight=32
         )
-        style.configure("Treeview.Heading", font=('Arial Bold', 14))
+        style.configure("Treeview.Heading", font=('Arial Bold', 13))
+        style.configure("Treeview", font=('Arial', 12))
 
-        # Treeview
         self.tree = ttk.Treeview(
-            tree_frame,
+            table_frame,
             columns=('Local', 'Código', 'Quantidade'),
             show='headings',
-            height=15
+            style="Treeview"
         )
 
-        # Configuração das colunas
-        self.tree.heading('Local', text='LOCAL', anchor="w")
-        self.tree.heading('Código', text='CÓDIGO', anchor="w")
-        self.tree.heading('Quantidade', text='QUANTIDADE', anchor="e")
+        for col, width in [('Local', 200), ('Código', 200), ('Quantidade', 100)]:
+            self.tree.heading(col, text=col, anchor="center")
+            self.tree.column(col, width=width, anchor="center")
 
-        self.tree.column('Local', width=200, anchor="w")     # Reduzido de 300
-        self.tree.column('Código', width=200, anchor="w")    # Reduzido de 300
-        self.tree.column('Quantidade', width=100, anchor="e") # Reduzido de 200
+        self.tree.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        # Scrollbars
-        vsb = ctk.CTkScrollbar(tree_frame, command=self.tree.yview)
-        vsb.pack(side="right", fill="y")
-        
-        hsb = ctk.CTkScrollbar(history_frame, orientation="horizontal", command=self.tree.xview)
-        hsb.pack(fill="x", padx=10)
-        
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar = ctk.CTkScrollbar(table_frame, command=self.tree.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        self.tree.configure(yscrollcommand=scrollbar.set)
 
-    def create_status_frame(self):
-        """Cria o frame de status"""
-        self.status_frame = ctk.CTkFrame(self.main_frame)
-        self.status_frame.pack(fill="x", padx=10, pady=10)
-        
-        self.status_var = ctk.StringVar()
-        self.status_label = ctk.CTkLabel(
-            self.status_frame,
-            textvariable=self.status_var,
-            font=FONT_LABEL
-        )
-        self.status_label.pack(side="left", padx=10)
+        # Frame de ações
+        action_frame = ctk.CTkFrame(self.main_frame, corner_radius=10)
+        action_frame.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
 
-    def create_action_frame(self):
-        """Cria o frame de ações finais"""
-        action_frame = ctk.CTkFrame(self.main_frame)
-        action_frame.pack(fill="x", padx=10, pady=10)
-
-        # Totais
-        self.totais_var = ctk.StringVar()
-        ctk.CTkLabel(
+        self.totais_label = ctk.CTkLabel(
             action_frame,
-            textvariable=self.totais_var,
-            font=FONT_LABEL
-        ).pack(side="left", padx=10)
+            text="TOTAL DE ITENS: 0",
+            font=("Arial Bold", 14)
+        )
+        self.totais_label.pack(side="left", padx=20)
 
-        # Botão finalizar
         ctk.CTkButton(
             action_frame,
             text="FINALIZAR INVENTÁRIO",
             command=self.finalizar_inventario,
             width=250,
             height=40,
-            font=FONT_LABEL,
-            fg_color="#4CAF50",
+            font=("Arial Bold", 14),
+            fg_color="green",
             hover_color="#45a049"
-        ).pack(side="right", padx=10)
+        ).pack(side="right", padx=20)
 
-        self.atualizar_totais()
+        # Footer
+        self.footer = ctk.CTkFrame(self.main_frame, fg_color="black")
+        self.footer.grid(row=5, column=0, sticky="ew", padx=20, pady=10)
+        self.footer.grid_columnconfigure(0, weight=1)
 
-    def atualizar_totais(self):
-        """Atualiza os totais mostrados na interface"""
-        total_geral = sum(sum(local.values()) for local in self.inventario.values())
-        self.totais_var.set(f"TOTAL DE ITENS: {total_geral}")
+        self.btn_sair = ctk.CTkButton(
+            self.footer,
+            text="SAIR",
+            width=70,
+            height=28,
+            corner_radius=6,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            command=self.root.destroy,
+            fg_color="red"
+        )
+        self.btn_sair.pack(side="right", padx=10)
+
+        self.label_footer = ctk.CTkLabel(
+            self.footer,
+            text="© 2025 Shigi - GitHub @brunoshigi",
+            font=ctk.CTkFont(size=12)
+        )
+        self.label_footer.pack(side="right", padx=10)
+
+        # Configurar expansão
+        self.main_frame.grid_rowconfigure(3, weight=1)
+        self.main_frame.grid_columnconfigure(0, weight=1)
+
+    def setup_variables(self):
+        """Configura as variáveis"""
+        self.local_atual = ctk.StringVar(value="loja")
+        self.codigo = ctk.StringVar()
+        self.inventario = {
+            'loja': {},
+            'estoque': {},
+            'quartinho_escada': {}
+        }
+        self.historico_codigos = []
 
     def registrar_codigo(self, event=None):
         """Registra um código no inventário"""
@@ -257,11 +228,7 @@ class InventoryApp:
 
         self.atualizar_historico()
         self.atualizar_totais()
-        self.status_var.set(
-            f'Código {codigo} registrado no {local.upper()}. '
-            f'Total: {self.inventario[local][codigo]}'
-        )
-        self.codigo.set('')
+        self.codigo.set('')  # Limpa o campo
         self.entry_codigo.focus()
 
     def desfazer_ultimo(self):
@@ -278,7 +245,6 @@ class InventoryApp:
 
         self.atualizar_historico()
         self.atualizar_totais()
-        self.status_var.set(f'Última leitura desfeita: {codigo} do {local.upper()}')
 
     def atualizar_historico(self):
         """Atualiza a visualização do histórico"""
@@ -288,6 +254,11 @@ class InventoryApp:
         for local in self.inventario:
             for codigo, qtd in self.inventario[local].items():
                 self.tree.insert('', 'end', values=(local.upper(), codigo, qtd))
+
+    def atualizar_totais(self):
+        """Atualiza o total de itens no label"""
+        total_geral = sum(sum(local.values()) for local in self.inventario.values())
+        self.totais_label.configure(text=f"TOTAL DE ITENS: {total_geral}")
 
     def finalizar_inventario(self):
         """Finaliza o inventário e gera os arquivos"""

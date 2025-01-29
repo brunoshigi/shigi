@@ -3,82 +3,239 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
 import sqlite3
+import os
 
-# Configurações da aplicação
-APPEARANCE_MODE = "Dark"
-COLOR_THEME = "blue"
-WINDOW_WIDTH = 1000
-WINDOW_HEIGHT = 600
-DB_PATH = "austral.db"
-FONT = {"family": "Arial", "size": {"title": 16, "subtitle": 14}}
-CORES = {
-    "bg_primary": "#2b2b2b",
-    "bg_secondary": "#333333",
-    "text_primary": "#ffffff"
-}
+# Configurações iniciais
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("blue")
 
-def criar_tabelas(cursor):
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS config_fundo (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            valor_fundo REAL NOT NULL,
-            depositos_pendentes REAL NOT NULL,
-            reposicoes_pendentes REAL NOT NULL,
-            ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS movimentacoes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            data TEXT NOT NULL,
-            tipo TEXT NOT NULL,
-            valor REAL NOT NULL,
-            responsavel TEXT,
-            descricao TEXT,
-            saldo REAL NOT NULL
-        )
-    """)
+# Configuração dos caminhos
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+if not os.path.exists(ASSETS_DIR):
+    os.makedirs(ASSETS_DIR)
+DB_PATH = os.path.join(ASSETS_DIR, "austral.db")
 
 class GestorFundoFixo(ctk.CTk):
     def __init__(self):
-        super().__init__()  # Agora herda de CTk, a janela principal
-        
-        # Configurações da janela
-        self.title("Fundo Fixo - Saldo Real em Caixa")
-        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+        super().__init__()
+
+        # Configurações da janela principal
+        self.title("SISTEMA AUSTRAL - FUNDO FIXO")
+        self.geometry("1400x780")
+        self.center_window()
         self.resizable(False, False)
+        self.configure(fg_color="#0F0F0F")
 
-        # Centralizar em relação à tela
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        x = (screen_width - WINDOW_WIDTH) // 2
-        y = (screen_height - WINDOW_HEIGHT) // 2
-        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{x}+{y}")
+        # Inicializações
+        self.dados = {
+            "valor_fundo": 1000.00,
+            "saldo_atual": 1000.00,
+            "depositos_pendentes": 0.00,
+            "reposicoes_pendentes": 0.00,
+            "movimentacoes": []
+        }
 
-        # Configuração do tema do CustomTkinter
-        ctk.set_appearance_mode(APPEARANCE_MODE)
-        ctk.set_default_color_theme(COLOR_THEME)
-
-        # Inicialização de variáveis
-        self.saldo = 1000.00
-        self.root = self  # Agora 'root' é a própria instância da janela principal
-
-        # Conecta ao banco de dados e carrega dados existentes
+        # Conecta ao banco e cria interface
         self.conectar_banco()
         self.carregar_dados()
+        self.criar_interface()
 
-        # Frame principal que conterá todos os elementos
-        self.main_frame = ctk.CTkFrame(
-            self,
-            fg_color=CORES["bg_primary"]
+    def center_window(self):
+        """Centraliza a janela na tela"""
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width - 1400) // 2
+        y = (screen_height - 720) // 2
+        self.geometry(f"+{x}+{y}")
+
+    def criar_interface(self):
+        """Cria a interface principal"""
+        # Frame principal com padding ajustado
+        self.main_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="black")
+        self.main_frame.pack(padx=10, pady=(10, 15), fill="both", expand=True)
+
+        # Container para conteúdo principal (tudo exceto footer)
+        self.content_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.content_frame.pack(fill="both", expand=True, padx=10, pady=(5, 10))
+
+        # Cabeçalho
+        ctk.CTkLabel(
+            self.content_frame,
+            text="CONTROLE DE FUNDO FIXO",
+            font=("Helvetica", 20, "bold")
+        ).pack(pady=(5, 10))
+
+        # Área de informações
+        self.criar_area_info()
+
+        # Área de movimentação
+        self.criar_area_movimentacao()
+
+        # Lista de movimentações
+        self.criar_lista_movimentacoes()
+
+        # Rodapé (agora fora do content_frame)
+        self.criar_footer()
+
+    def criar_area_info(self):
+        """Cria área de informações do fundo"""
+        info_frame = ctk.CTkFrame(self.content_frame, fg_color="#1A1A1A")
+        info_frame.pack(fill="x", padx=20, pady=10)
+
+        # Botão para configurar valor do fundo
+        config_btn = ctk.CTkButton(
+            info_frame,
+            text="CONFIGURAR VALOR DO FUNDO",
+            command=self.configurar_valor_fundo,
+            width=200,
+            fg_color="#4B0082",  # Cor índigo
+            hover_color="#483D8B"
         )
-        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        config_btn.pack(pady=5)
 
-        # Criação dos componentes principais
-        self.criar_painel_info(self.main_frame)
-        self.criar_area_movimentacao(self.main_frame)
-        self.criar_lista_movimentacoes(self.main_frame)
-        self.criar_botao_resumo_periodo(self.main_frame)
+        # Grid para informações
+        grid = ctk.CTkFrame(info_frame, fg_color="transparent")
+        grid.pack(pady=10)
+
+        # Primeira linha
+        self.label_valor_fundo = ctk.CTkLabel(
+            grid,
+            text="VALOR DO FUNDO",
+            font=("Helvetica", 14, "bold")
+        )
+        self.label_valor_fundo.grid(row=0, column=0, padx=20)
+
+        self.label_saldo_atual = ctk.CTkLabel(
+            grid,
+            text="SALDO ATUAL",
+            font=("Helvetica", 14, "bold")
+        )
+        self.label_saldo_atual.grid(row=0, column=1, padx=20)
+
+        # Segunda linha
+        self.label_depositos = ctk.CTkLabel(
+            grid,
+            text="DEPÓSITOS PENDENTES",
+            font=("Helvetica", 12)
+        )
+        self.label_depositos.grid(row=1, column=0, padx=20, pady=10)
+
+        self.label_reposicoes = ctk.CTkLabel(
+            grid,
+            text="REPOSIÇÕES PENDENTES",
+            font=("Helvetica", 12)
+        )
+        self.label_reposicoes.grid(row=1, column=1, padx=20, pady=10)
+
+    def criar_area_movimentacao(self):
+        """Cria área de registro de movimentações"""
+        mov_frame = ctk.CTkFrame(self.content_frame, fg_color="#1A1A1A")
+        mov_frame.pack(fill="x", padx=20, pady=10)
+
+        # Form frame
+        form_frame = ctk.CTkFrame(mov_frame, fg_color="transparent")
+        form_frame.pack(pady=10, padx=20)
+
+        # Campos de entrada
+        # Tipo de movimentação
+        ctk.CTkLabel(form_frame, text="TIPO:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        self.tipo_var = tk.StringVar(value="Entrada")
+        self.tipo_om = ctk.CTkOptionMenu(
+            form_frame,
+            values=["Entrada", "Saída"],
+            variable=self.tipo_var,
+            width=150
+        )
+        self.tipo_om.grid(row=0, column=1, sticky="w", padx=5, pady=5)
+
+        # Valor
+        ctk.CTkLabel(form_frame, text="VALOR R$:").grid(row=0, column=2, sticky="w", padx=5, pady=5)
+        self.valor_var = tk.StringVar()
+        self.valor_entry = ctk.CTkEntry(form_frame, textvariable=self.valor_var, width=150)
+        self.valor_entry.grid(row=0, column=3, sticky="w", padx=5, pady=5)
+
+        # Responsável
+        ctk.CTkLabel(form_frame, text="RESPONSÁVEL:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        self.resp_var = tk.StringVar()
+        self.resp_entry = ctk.CTkEntry(form_frame, textvariable=self.resp_var, width=150)
+        self.resp_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+
+        # Descrição
+        ctk.CTkLabel(form_frame, text="DESCRIÇÃO:").grid(row=1, column=2, sticky="w", padx=5, pady=5)
+        self.desc_var = tk.StringVar()
+        self.desc_entry = ctk.CTkEntry(form_frame, textvariable=self.desc_var, width=400)
+        self.desc_entry.grid(row=1, column=3, columnspan=2, sticky="w", padx=5, pady=5)
+
+        # Botões
+        btn_frame = ctk.CTkFrame(mov_frame, fg_color="transparent")
+        btn_frame.pack(pady=10)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="REGISTRAR",
+            command=self.registrar_movimentacao,
+            width=120
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="LIMPAR",
+            command=self.limpar_campos,
+            width=120,
+            fg_color="#FFA500",
+            hover_color="#FF8C00"
+        ).pack(side="left", padx=5)
+
+    def criar_footer(self):
+        """Cria o rodapé."""
+        self.footer = ctk.CTkFrame(self.main_frame, height=40, fg_color="#1A1A1A")
+        self.footer.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
+        # Força a altura mínima do footer e impede que seja redimensionado
+        self.footer.pack_propagate(False)
+        self.footer.grid_propagate(False)
+
+        # Container esquerdo para status
+        status_container = ctk.CTkFrame(self.footer, fg_color="transparent")
+        status_container.pack(side="left", fill="y", padx=10)
+        
+        # Status com fonte ajustada
+        self.status_label = ctk.CTkLabel(
+            status_container,
+            text="Sistema pronto",
+            font=ctk.CTkFont(size=12)
+        )
+        self.status_label.pack(side="left", pady=8)
+
+        # Container direito para botões e créditos
+        right_container = ctk.CTkFrame(self.footer, fg_color="transparent")
+        right_container.pack(side="right", fill="y", padx=10)
+
+        # Créditos do desenvolvedor
+        self.label_footer = ctk.CTkLabel(
+            right_container,
+            text="© 2025 Shigi - GitHub @brunoshigi",
+            font=ctk.CTkFont(size=12)
+        )
+        self.label_footer.pack(side="right", padx=10, pady=8)
+
+        # Botão de saída
+        self.btn_sair = ctk.CTkButton(
+            right_container,
+            text="SAIR",
+            width=70,
+            height=30,
+            corner_radius=5,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            command=self.sair_sistema,
+            fg_color="red",
+            hover_color="#CC0000"
+        )
+        self.btn_sair.pack(side="right", padx=5, pady=5)
+
+    def sair_sistema(self):
+        """Fecha a aplicação"""
+        self.quit()
+        self.destroy()
 
     def conectar_banco(self):
         """Conecta ao banco e cria tabela se necessário."""
@@ -154,156 +311,65 @@ class GestorFundoFixo(ctk.CTk):
         ))
         self.conn.commit()
 
-    def criar_painel_info(self, parent):
-        """
-        Cria o painel superior que mostra as informações principais:
-        valor do fundo, saldo atual e valores pendentes.
-        """
-        self.info_frame = ctk.CTkFrame(parent, fg_color=CORES["bg_secondary"])
-        self.info_frame.pack(fill="x", pady=(0, 10))
+    def criar_lista_movimentacoes(self):
+        """Cria a área que mostra o histórico de movimentações"""
+        self.lista_frame = ctk.CTkFrame(self.content_frame)
+        self.lista_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
 
-        titulo_label = ctk.CTkLabel(
-            self.info_frame,
-            text="Informações do Fundo Fixo",
-            font=(FONT["family"], FONT["size"]["title"]),
-            text_color=CORES["text_primary"]
-        )
-        titulo_label.pack(pady=5)
+        # Header frame
+        header_frame = ctk.CTkFrame(self.lista_frame, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(5, 10))
 
-        # Linha superior com valor do fundo e saldo atual
-        linha1 = ctk.CTkFrame(self.info_frame)
-        linha1.pack(fill="x", pady=5)
-
-        self.label_valor_fundo = ctk.CTkLabel(
-            linha1,
-            text="Valor do Fundo:",
-            font=("Arial", 14, "bold")
-        )
-        self.label_valor_fundo.pack(side="left", expand=True)
-
-        self.label_saldo_atual = ctk.CTkLabel(
-            linha1,
-            text="Saldo Atual:",
-            font=("Arial", 14, "bold")
-        )
-        self.label_saldo_atual.pack(side="left", expand=True)
-
-        # Linha inferior com depósitos e reposições pendentes
-        linha2 = ctk.CTkFrame(self.info_frame)
-        linha2.pack(fill="x", pady=5)
-
-        self.label_depositos = ctk.CTkLabel(
-            linha2,
-            text="Depósitos Pendentes: R$ 0.00",
-            font=("Arial", 13)
-        )
-        self.label_depositos.pack(side="left", expand=True)
-
-        self.label_reposicoes = ctk.CTkLabel(
-            linha2,
-            text="Reposições Pendentes: R$ 0.00",
-            font=("Arial", 13)
-        )
-        self.label_reposicoes.pack(side="left", expand=True)
-
-    def criar_area_movimentacao(self, parent):
-        """
-        Cria a área onde são registradas as movimentações,
-        com campos para tipo, valor, responsável e descrição.
-        """
-        self.mov_frame = ctk.CTkFrame(
-            parent,
-            fg_color=CORES["bg_secondary"]
-        )
-        self.mov_frame.pack(fill="x", pady=(0, 10))
-
-        mov_titulo = ctk.CTkLabel(
-            self.mov_frame,
-            text="Registrar Movimentação",
-            font=(FONT["family"], FONT["size"]["subtitle"]),
-            text_color=CORES["text_primary"]
-        )
-        mov_titulo.pack(pady=5)
-
-        linha_mov = ctk.CTkFrame(self.mov_frame)
-        linha_mov.pack(fill="x", padx=5, pady=5)
-
-        # Tipo de movimentação (Entrada/Saída)
-        label_tipo = ctk.CTkLabel(linha_mov, text="Tipo:")
-        label_tipo.pack(side="left", padx=(0, 5))
-
-        self.tipo_var = tk.StringVar(value="Entrada")
-        self.tipo_om = ctk.CTkOptionMenu(
-            linha_mov,
-            values=["Entrada", "Saída"],
-            variable=self.tipo_var,
-            width=100
-        )
-        self.tipo_om.pack(side="left", padx=(0, 15))
-
-        # Campo de valor
-        label_valor = ctk.CTkLabel(linha_mov, text="Valor R$:") 
-        label_valor.pack(side="left", padx=(0, 5))
-
-        self.valor_var = tk.StringVar()
-        self.valor_entry = ctk.CTkEntry(
-            linha_mov,
-            textvariable=self.valor_var,
-            width=100
-        )
-        self.valor_entry.pack(side="left", padx=(0, 15))
-
-        # Campo de responsável
-        label_resp = ctk.CTkLabel(linha_mov, text="Responsável:")
-        label_resp.pack(side="left", expand=True)
-
-        self.resp_var = tk.StringVar()
-        self.resp_entry = ctk.CTkEntry(
-            linha_mov,
-            textvariable=self.resp_var,
-            width=120
-        )
-        self.resp_entry.pack(side="left", expand=True)
-
-        # Campo de descrição
-        label_desc = ctk.CTkLabel(linha_mov, text="Descrição:")
-        label_desc.pack(side="left", expand=True)
-
-        self.desc_var = tk.StringVar()
-        self.desc_entry = ctk.CTkEntry(
-            linha_mov,
-            textvariable=self.desc_var,
-            width=200
-        )
-        self.desc_entry.pack(side="left", expand=True)
-
-        # Botão de registrar
-        registrar_btn = ctk.CTkButton(
-            linha_mov,
-            text="Registrar",
-            command=self.registrar_movimentacao
-        )
-        registrar_btn.pack(side="left", padx=(0, 5))
-
-    def criar_lista_movimentacoes(self, parent):
-        """
-        Cria a área que mostra o histórico de movimentações
-        em formato de tabela.
-        """
-        self.lista_frame = ctk.CTkFrame(parent)
-        self.lista_frame.pack(fill="both", expand=True)
-
-        lista_titulo = ctk.CTkLabel(
-            self.lista_frame,
-            text="Histórico de Movimentações",
+        # Título alinhado à esquerda
+        ctk.CTkLabel(
+            header_frame,
+            text="HISTÓRICO DE MOVIMENTAÇÕES",
             font=("Arial", 15, "bold")
-        )
-        lista_titulo.pack(pady=5)
+        ).pack(side="left", padx=10)
 
+        # Botões de ação alinhados à direita
+        btn_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        btn_frame.pack(side="right", padx=10)
+
+        # Botões com tamanhos padronizados
+        button_width = 120
+        button_height = 32
+
+        ctk.CTkButton(
+            btn_frame,
+            text="EXCLUIR",
+            command=self.excluir_movimentacao,
+            width=button_width,
+            height=button_height,
+            fg_color="#FF4444",
+            hover_color="#CC3333"
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="EDITAR",
+            command=self.editar_descricao,
+            width=button_width,
+            height=button_height,
+            fg_color="#4CAF50",
+            hover_color="#45a049"
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="RESUMO",
+            command=self.mostrar_resumo_periodo,
+            width=button_width,
+            height=button_height,
+            fg_color="#9370DB",
+            hover_color="#8A2BE2"
+        ).pack(side="left", padx=5)
+
+        # Frame da tabela
         tv_frame = ctk.CTkFrame(self.lista_frame)
-        tv_frame.pack(fill="both", expand=True)
+        tv_frame.pack(fill="both", expand=True, padx=10, pady=(0, 5))
 
-        # Configuração da tabela
+        # Configuração da tabela com proporções ajustadas
         self.tree = ttk.Treeview(
             tv_frame,
             columns=("data", "tipo", "valor", "responsavel", "descricao", "saldo"),
@@ -311,7 +377,7 @@ class GestorFundoFixo(ctk.CTk):
             selectmode="browse"
         )
         
-        # Configuração das colunas
+        # Configuração das colunas com proporções melhores
         self.tree.heading("data", text="Data/Hora")
         self.tree.heading("tipo", text="Tipo")
         self.tree.heading("valor", text="Valor")
@@ -319,72 +385,119 @@ class GestorFundoFixo(ctk.CTk):
         self.tree.heading("descricao", text="Descrição")
         self.tree.heading("saldo", text="Saldo")
 
-        # Largura das colunas
-        self.tree.column("data", width=140)
-        self.tree.column("tipo", width=70)
-        self.tree.column("valor", width=90)
-        self.tree.column("responsavel", width=110)
-        self.tree.column("descricao", width=220)
-        self.tree.column("saldo", width=90)
+        # Larguras proporcionais
+        self.tree.column("data", width=150)
+        self.tree.column("tipo", width=100)
+        self.tree.column("valor", width=120)
+        self.tree.column("responsavel", width=150)
+        self.tree.column("descricao", width=300)
+        self.tree.column("saldo", width=120)
 
-        # Adiciona barra de rolagem
+        # Scrollbars
         vsb = ttk.Scrollbar(tv_frame, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=vsb.set)
+        hsb = ttk.Scrollbar(tv_frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
-        self.tree.pack(side="left", fill="both", expand=True)
-        vsb.pack(side="right", fill="y")
+        # Grid da tabela e scrollbars
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+        # Configurar expansão do grid
+        tv_frame.grid_columnconfigure(0, weight=1)
+        tv_frame.grid_rowconfigure(0, weight=1)
 
-        # Menu de contexto para editar/excluir
-        self.context_menu = tk.Menu(self.root, tearoff=0)
-        self.context_menu.add_command(
-            label="Excluir Movimentação",
-            command=self.excluir_movimentacao
+    def configurar_valor_fundo(self):
+        """Abre janela para configurar novo valor do fundo fixo"""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Configurar Valor do Fundo")
+        dialog.geometry("400x200")
+        dialog.resizable(False, False)
+        
+        # Força a janela a ficar na frente
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.focus_force()
+
+        # Frame principal
+        frame = ctk.CTkFrame(dialog)
+        frame.pack(padx=20, pady=20, fill="both", expand=True)
+
+        # Label informativo
+        ctk.CTkLabel(
+            frame,
+            text="Digite o novo valor do fundo fixo:",
+            font=("Helvetica", 14)
+        ).pack(pady=10)
+
+        # Entry para o valor
+        valor_var = tk.StringVar(value=str(self.dados["valor_fundo"]))
+        valor_entry = ctk.CTkEntry(
+            frame,
+            textvariable=valor_var,
+            width=200,
+            placeholder_text="Ex: 1000.00"
         )
-        self.context_menu.add_command(
-            label="Editar Descrição",
-            command=self.editar_descricao
-        )
-        self.tree.bind("<Button-3>", self.mostrar_menu_contexto)
+        valor_entry.pack(pady=10)
 
-    def mostrar_menu_contexto(self, event):
-        """
-        Exibe o menu de contexto ao clicar com botão direito
-        em uma movimentação.
-        """
-        item = self.tree.identify_row(event.y)
-        if item:
-            self.tree.selection_set(item)
-            self.context_menu.post(event.x_root, event.y_root)
+        def salvar_valor():
+            try:
+                novo_valor = float(valor_var.get().replace(',', '.'))
+                if novo_valor <= 0:
+                    raise ValueError("O valor deve ser maior que zero")
 
-    def criar_botao_resumo_periodo(self, parent):
-        """
-        Cria o botão para gerar relatório de resumo por período.
-        """
-        resumo_frame = ctk.CTkFrame(parent)
-        resumo_frame.pack(fill="x", pady=10)
+                # Atualiza o valor do fundo
+                self.dados["valor_fundo"] = novo_valor
+                
+                # Se o saldo atual for maior que o novo valor, ajusta os depósitos pendentes
+                if self.dados["saldo_atual"] > novo_valor:
+                    self.dados["depositos_pendentes"] += (self.dados["saldo_atual"] - novo_valor)
+                # Se for menor, ajusta as reposições pendentes
+                elif self.dados["saldo_atual"] < novo_valor:
+                    self.dados["reposicoes_pendentes"] = novo_valor - self.dados["saldo_atual"]
 
-        btn_resumo = ctk.CTkButton(
-            resumo_frame,
-            text="Resumo por Período",
-            command=self.mostrar_resumo_periodo
-        )
-        btn_resumo.pack(pady=5)
+                # Salva no banco e atualiza interface
+                self.salvar_dados()
+                self.atualizar_interface()
+                dialog.destroy()
+                messagebox.showinfo("Sucesso", "Valor do fundo atualizado com sucesso!")
+
+            except ValueError as e:
+                messagebox.showerror("Erro", str(e))
+
+        # Botões
+        btn_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        btn_frame.pack(pady=10)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="SALVAR",
+            command=salvar_valor,
+            width=100
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="CANCELAR",
+            command=dialog.destroy,
+            width=100,
+            fg_color="gray"
+        ).pack(side="left", padx=5)
 
     def logica_entrada(self, valor):
         """
         Aplica a lógica de entrada de dinheiro mantendo o controle do saldo real.
         """
-        # 1) Se houver reposições pendentes, abate primeiro
+        # 1) Atualiza o saldo real primeiro
+        self.dados["saldo_atual"] += valor
+        
+        # 2) Se houver reposições pendentes, abate primeiro
         if self.dados["reposicoes_pendentes"] > 0:
-            if valor >= self.dados["reposicoes_pendentes"]:
-                valor -= self.dados["reposicoes_pendentes"]
+            if self.dados["saldo_atual"] >= self.dados["valor_fundo"]:
+                # Se o saldo atual cobriu o valor do fundo, zera as reposições pendentes
                 self.dados["reposicoes_pendentes"] = 0.0
             else:
-                self.dados["reposicoes_pendentes"] -= valor
-                valor = 0.0
-    
-        # 2) Sempre atualiza o saldo real primeiro
-        self.dados["saldo_atual"] += valor
+                # Caso contrário, reduz proporcionalmente as reposições pendentes
+                self.dados["reposicoes_pendentes"] = self.dados["valor_fundo"] - self.dados["saldo_atual"]
         
         # 3) Se o saldo ficou acima do valor do fundo, adiciona a diferença em depósitos pendentes
         if self.dados["saldo_atual"] > self.dados["valor_fundo"]:
@@ -407,10 +520,9 @@ class GestorFundoFixo(ctk.CTk):
         # 2) Se ainda há valor para saída, subtrai do saldo
         self.dados["saldo_atual"] -= valor
         
-        # 3) Se o saldo ficou abaixo do fundo fixo, registra como reposição pendente
+        # 3) Atualiza reposições pendentes baseado no saldo atual
         if self.dados["saldo_atual"] < self.dados["valor_fundo"]:
-            falta = self.dados["valor_fundo"] - self.dados["saldo_atual"]
-            self.dados["reposicoes_pendentes"] += falta
+            self.dados["reposicoes_pendentes"] = self.dados["valor_fundo"] - self.dados["saldo_atual"]
 
     def registrar_movimentacao(self):
         """
@@ -460,13 +572,16 @@ class GestorFundoFixo(ctk.CTk):
             messagebox.showerror("Erro", str(e))
 
     def mostrar_resumo_periodo(self):
-        """
-        Abre uma janela para o usuário selecionar o período
-        do qual deseja ver o resumo das movimentações.
-        """
-        dialog = ctk.CTkToplevel(self.root)
+        """Abre janela para seleção do período"""
+        dialog = ctk.CTkToplevel(self)  # Corrigido: self.root -> self
         dialog.title("Resumo por Período")
-        dialog.geometry("400x300")
+        dialog.geometry("500x300")
+        dialog.resizable(False, False)
+        
+        # Força a janela a ficar na frente
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.focus_force()
 
         # Instruções para o usuário
         instr_label = ctk.CTkLabel(
@@ -543,6 +658,11 @@ class GestorFundoFixo(ctk.CTk):
             resumo_toplevel = ctk.CTkToplevel(parent_dialog)
             resumo_toplevel.title("Resumo do Período")
             resumo_toplevel.geometry("400x400")
+            
+            # Força a janela a ficar na frente
+            resumo_toplevel.transient(parent_dialog)
+            resumo_toplevel.grab_set()
+            resumo_toplevel.focus_force()
 
             # Área de texto para o relatório
             text_box = tk.Text(resumo_toplevel, height=20, width=50)
@@ -606,15 +726,22 @@ class GestorFundoFixo(ctk.CTk):
         """
         selecionado = self.tree.selection()
         if not selecionado:
+            messagebox.showwarning("Atenção", "Selecione uma movimentação para editar!")
             return
 
         item = selecionado[0]
         idx = len(self.dados["movimentacoes"]) - self.tree.index(item) - 1
 
         # Cria uma janela para edição
-        dialog = ctk.CTkToplevel(self.root)
+        dialog = ctk.CTkToplevel(self)  # Corrigido: self.root -> self
         dialog.title("Editar Descrição")
-        dialog.geometry("400x150")
+        dialog.geometry("500x200")
+        dialog.resizable(False, False)
+        
+        # Força a janela a ficar na frente
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.focus_force()
 
         ctk.CTkLabel(dialog, text="Nova descrição:").pack(pady=5)
 
@@ -708,6 +835,29 @@ class GestorFundoFixo(ctk.CTk):
 
     def run(self):
         self.mainloop()
+
+def criar_tabelas(cursor):
+    """Cria as tabelas necessárias se não existirem"""
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS config_fundo (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            valor_fundo REAL NOT NULL,
+            depositos_pendentes REAL NOT NULL,
+            reposicoes_pendentes REAL NOT NULL,
+            ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS movimentacoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            data TEXT NOT NULL,
+            tipo TEXT NOT NULL,
+            valor REAL NOT NULL,
+            responsavel TEXT,
+            descricao TEXT,
+            saldo REAL NOT NULL
+        )
+    """)
 
 if __name__ == "__main__":
     app = GestorFundoFixo()
